@@ -43,39 +43,42 @@ class NextWordPredictor(nn.Module):
 @st.cache_resource
 
 def download_model_from_github(emb_dim, hidden_size, activation, block_size, random_seed):
+    activation = activation.lower()
+
     filename = f"model_{emb_dim}_{hidden_size}_{activation}_bs{block_size}_rs{random_seed}.pt"
     url = f"https://raw.githubusercontent.com/VanshOnGit/ML-Assignment-3/main/models/{filename}"
 
-    # Create models directory if it doesn't exist
     if not os.path.exists("models"):
         os.makedirs("models")
 
     model_path = os.path.join("models", filename)
 
-    # Download the model only if it doesn't exist locally
     if not os.path.exists(model_path):
         st.write(f"Downloading {filename} from GitHub...")
         response = requests.get(url, stream=True)
+
         if response.status_code == 200:
             with open(model_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             st.write(f"Downloaded {filename} successfully.")
         else:
-            st.error(f"Failed to download {filename}. Please check the URL.")
+            st.error(f"Failed to download {filename}. Please check the URL or file name.")
             st.stop()
 
     return model_path
 
 def load_model(emb_dim, hidden_size, activation, block_size, random_seed):
-    activation_fn = {"Tanh": torch.tanh, "ReLU": torch.relu, "Sigmoid": torch.sigmoid}[activation]
-    
+    activation = activation.lower()
+
+    activation_fn = {"tanh": torch.tanh, "relu": torch.relu, "sigmoid": torch.sigmoid}[activation]
+
     model_path = download_model_from_github(emb_dim, hidden_size, activation, block_size, random_seed)
 
     model = NextWordPredictor(block_size, vocab_size, emb_dim, hidden_size, activation_fn).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
-    return model
 
+    return model
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
@@ -104,10 +107,8 @@ def handle_unknown_words(words, model):
 def generate_text(model, context, max_words, block_size):
     model.eval()
 
-    # Handle unknown words in the context
     context = handle_unknown_words(context, model)
 
-    # Convert context to indices and pad/truncate to fit block size
     context_indices = [stoi.get(word, stoi['<PAD>']) for word in context]
     context_indices = [0] * (block_size - len(context_indices)) + context_indices[-block_size:]
 
