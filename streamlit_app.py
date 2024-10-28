@@ -1,5 +1,4 @@
-
-
+import requests
 import streamlit as st
 import torch
 import pickle
