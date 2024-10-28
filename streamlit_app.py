@@ -42,17 +42,45 @@ class NextWordPredictor(nn.Module):
         return self.lin2(x)
 
 @st.cache_resource
+import requests
+import os
+import streamlit as st
+import torch
+
+def download_model_from_github(emb_dim, hidden_size, activation, block_size, random_seed):
+    filename = f"model_{emb_dim}_{hidden_size}_{activation}_bs{block_size}_rs{random_seed}.pt"
+    url = f"https://raw.githubusercontent.com/VanshOnGit/ML-Assignment-3/main/models/{filename}"
+
+    # Create models directory if it doesn't exist
+    if not os.path.exists("models"):
+        os.makedirs("models")
+
+    model_path = os.path.join("models", filename)
+
+    # Download the model only if it doesn't exist locally
+    if not os.path.exists(model_path):
+        st.write(f"Downloading {filename} from GitHub...")
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(model_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            st.write(f"Downloaded {filename} successfully.")
+        else:
+            st.error(f"Failed to download {filename}. Please check the URL.")
+            st.stop()
+
+    return model_path
+
 def load_model(emb_dim, hidden_size, activation, block_size, random_seed):
     activation_fn = {"Tanh": torch.tanh, "ReLU": torch.relu, "Sigmoid": torch.sigmoid}[activation]
-    model_path = os.path.join("models", f"model_{emb_dim}_{hidden_size}_{activation}_bs{block_size}_rs{random_seed}.pt")
-
-    if not os.path.exists(model_path):
-        st.error(f"Model {model_path} not found. Make sure the model file exists.")
-        st.stop()
+    
+    model_path = download_model_from_github(emb_dim, hidden_size, activation, block_size, random_seed)
 
     model = NextWordPredictor(block_size, vocab_size, emb_dim, hidden_size, activation_fn).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     return model
+
 
 nltk.download('wordnet')
 nltk.download('omw-1.4')
