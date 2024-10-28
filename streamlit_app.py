@@ -42,10 +42,6 @@ class NextWordPredictor(nn.Module):
         return self.lin2(x)
 
 @st.cache_resource
-import requests
-import os
-import streamlit as st
-import torch
 
 def download_model_from_github(emb_dim, hidden_size, activation, block_size, random_seed):
     filename = f"model_{emb_dim}_{hidden_size}_{activation}_bs{block_size}_rs{random_seed}.pt"
